@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GameAgentHub - 网易游戏TA团队内部AI技能共享平台</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px 40px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header h1 {
+      color: #667eea;
+      font-size: 2rem;
+      margin-bottom: 5px;
+    }
+    
+    .header p {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    
+    .stat-card h3 {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    
+    .stat-card .value {
+      color: #667eea;
+      font-size: 2.5rem;
+      font-weight: bold;
+    }
+    
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .section h2 {
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+    }
+    
+    .skill-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .skill-card {
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+    
+    .skill-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+      transform: translateY(-2px);
+    }
+    
+    .skill-card h3 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    
+    .skill-card .description {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+      line-height: 1.5;
+    }
+    
+    .skill-card .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+    
+    .skill-card .gdi-score {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+    
+    .skill-card .tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    
+    .tag {
+      background: #f0f0f0;
+      color: #666;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: transform 0.2s;
+    }
+    
+    .btn:hover {
+      transform: scale(1.05);
+    }
+    
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #666;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    
+    .api-status {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+    
+    .api-status .status-ok {
+      color: #28a745;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+    
+    .empty-state h3 {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎮 GameAgentHub</h1>
+    <p>网易游戏TA团队内部AI技能共享平台</p>
+  </div>
+  
+  <div class="container">
+    <!-- API Status -->
+    <div class="api-status" id="apiStatus">
+      <strong>API 状态:</strong> <span id="apiStatusText">检查中...</span>
+    </div>
+    
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card">
+        <h3>总技能数</h3>
+        <div class="value" id="totalSkills">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>总安装量</h3>
+        <div class="value" id="totalInstallations">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>活跃用户</h3>
+        <div class="value" id="activeUsers">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>平均 GDI 评分</h3>
+        <div class="value" id="avgGDIScore">0.00</div>
+      </div>
+    </div>
+    
+    <!-- Skills Section -->
+    <div class="section">
+      <h2>📦 可用技能</h2>
+      <div style="margin-bottom: 20px;">
+        <button class="btn" onclick="loadSkills()">刷新技能列表</button>
+        <button class="btn btn-secondary" onclick="showUploadModal()">上传新技能</button>
+      </div>
+      <div class="skill-list" id="skillList">
+        <div class="loading">正在加载技能...</div>
+      </div>
+    </div>
+    
+    <!-- API Documentation -->
+    <div class="section">
+      <h2>🔌 Agent API 接口</h2>
+      <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 0.85rem;">
+        <p style="margin-bottom: 10px;"><strong>GET /api/skills</strong> - 获取技能列表</p>
+        <p style="margin-bottom: 10px;"><strong>GET /api/skills/:id</strong> - 获取技能详情</p>
+        <p style="margin-bottom: 10px;"><strong>POST /api/skills</strong> - 上传新技能</p>
+        <p style="margin-bottom: 10px;"><strong>POST /api/skills/:id/install</strong> - 安装技能</p>
+        <p style="margin-bottom: 10px;"><strong>POST /api/skills/:id/rate</strong> - 评分技能</p>
+        <p style="margin-bottom: 10px;"><strong>GET /api/agent/discover</strong> - Agent 技能发现</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const API_BASE = 'http://localhost:3000/api';
+    
+    // Check API status
+    async function checkAPIStatus() {
+      try {
+        const response = await fetch('http://localhost:3000/health');
+        const data = await response.json();
+        document.getElementById('apiStatusText').innerHTML = '<span class="status-ok">✓ 正常运行</span>';
+        return true;
+      } catch (error) {
+        document.getElementById('apiStatusText').innerHTML = '<span style="color: #dc3545;">✗ 无法连接</span>';
+        return false;
+      }
+    }
+    
+    // Load skills
+    async function loadSkills() {
+      try {
+        const response = await fetch(`${API_BASE}/skills`);
+        const data = await response.json();
+        
+        const skillList = document.getElementById('skillList');
+        
+        if (data.skills.length === 0) {
+          skillList.innerHTML = `
+            <div class="empty-state">
+              <h3>暂无技能</h3>
+              <p>点击"上传新技能"添加第一个技能</p>
+            </div>
+          `;
+          return;
+        }
+        
+        skillList.innerHTML = data.skills.map(skill => `
+          <div class="skill-card">
+            <h3>${skill.name}</h3>
+            <p class="description">${skill.description}</p>
+            <div class="meta">
+              <span>版本：${skill.version}</span>
+              <span class="gdi-score">GDI: ${skill.gdiScore.toFixed(2)}</span>
+            </div>
+            <div class="tags">
+              ${skill.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+            </div>
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+              <button class="btn" onclick="installSkill('${skill.id}')">安装</button>
+              <button class="btn btn-secondary" onclick="rateSkill('${skill.id}')">评分</button>
+            </div>
+          </div>
+        `).join('');
+        
+        // Update stats
+        document.getElementById('totalSkills').textContent = data.skills.length;
+        document.getElementById('totalInstallations').textContent = 
+          data.skills.reduce((sum, s) => sum + s.stats.installations, 0);
+        
+        const avgGDI = data.skills.length > 0 
+          ? data.skills.reduce((sum, s) => sum + s.gdiScore, 0) / data.skills.length 
+          : 0;
+        document.getElementById('avgGDIScore').textContent = avgGDI.toFixed(2);
+        
+      } catch (error) {
+        console.error('Error loading skills:', error);
+        document.getElementById('skillList').innerHTML = 
+          '<div class="empty-state"><h3>加载失败</h3><p>请确保后端服务正在运行</p></div>';
+      }
+    }
+    
+    // Install skill
+    async function installSkill(skillId) {
+      try {
+        const response = await fetch(`${API_BASE}/skills/${skillId}/install`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        alert(data.message);
+        loadSkills();
+      } catch (error) {
+        alert('安装失败：' + error.message);
+      }
+    }
+    
+    // Rate skill
+    async function rateSkill(skillId) {
+      const score = prompt('请输入评分 (1-5):');
+      if (!score || score < 1 || score > 5) {
+        alert('请输入有效的评分 (1-5)');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE}/skills/${skillId}/rate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: 'user_demo',
+            overallScore: parseInt(score),
+            dimensions: {
+              intrinsicQuality: 0.8,
+              usageMetrics: 0.7,
+              socialSignals: 0.9,
+              freshness: 0.8
+            }
+          })
+        });
+        const data = await response.json();
+        alert('评分成功！新的 GDI 分数：' + data.newGDIScore);
+        loadSkills();
+      } catch (error) {
+        alert('评分失败：' + error.message);
+      }
+    }
+    
+    // Show upload modal
+    function showUploadModal() {
+      const name = prompt('技能名称:');
+      if (!name) return;
+      
+      const description = prompt('技能描述:');
+      if (!description) return;
+      
+      const tags = prompt('标签 (用逗号分隔):', 'ai,automation,tool');
+      
+      uploadSkill(name, description, tags ? tags.split(',').map(t => t.trim()) : []);
+    }
+    
+    // Upload skill
+    async function uploadSkill(name, description, tags) {
+      try {
+        const response = await fetch(`${API_BASE}/skills`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            description,
+            authorId: 'user_demo',
+            version: '1.0.0',
+            tags,
+            category: 'general'
+          })
+        });
+        const data = await response.json();
+        alert('技能上传成功！');
+        loadSkills();
+      } catch (error) {
+        alert('上传失败：' + error.message);
+      }
+    }
+    
+    // Initialize
+    async function init() {
+      const apiOk = await checkAPIStatus();
+      if (apiOk) {
+        loadSkills();
+      }
+    }
+    
+    init();
+  </script>
+</body>
+</html>
