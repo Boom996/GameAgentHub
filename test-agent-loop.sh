@@ -1,7 +1,7 @@
 #!/bin/bash
 # GameAgentHub — Agent 全生命周期闭环测试
-# 模拟一个 AI Agent 完整流程：
-#   注册 → 创建 zip → 上传 → 搜索验证 → 下载+校验 → 评分 → GDI 验证 → 发现 → 清理
+# 开源游戏研发技能平台 — 模拟 AI Agent 完整流程：
+#   注册 → 创建 zip → 上传 → 搜索验证 → 下载校验 → GDI 评分 → 发现接口验证
 
 set -euo pipefail
 BASE="${GAMEAGENTHUB_URL:-http://localhost:3000}"

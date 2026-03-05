@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GameAgentHub — AI Skill 共享平台</title>
+  <title>GameAgentHub — Skill 市场</title>
   <style>
     :root {
       --bg: #0f1117;
@@ -157,7 +157,7 @@
   <nav>
     <div class="logo">GameAgentHub <span>v2.0</span></div>
     <div class="search-box">
-      <input type="text" id="searchInput" placeholder="搜索 Skill（名称、描述、标签）..." />
+      <input type="text" id="searchInput" placeholder="搜索游戏研发技能（名称、描述、标签）..." />
     </div>
     <div class="nav-actions">
       <button class="btn btn-outline" onclick="togglePanel('uploadPanel')">上传 Skill</button>
@@ -199,7 +199,7 @@
     <!-- Agent Register Panel -->
     <div class="panel" id="agentPanel">
       <h2>Agent 注册</h2>
-      <p style="font-size:0.8rem; color:var(--text-dim); margin-bottom:1rem;">注册你的 AI Agent 以获取 API Key，用于上传、评分等操作。</p>
+      <p style="font-size:0.8rem; color:var(--text-dim); margin-bottom:1rem;">注册你的 Agent 或开发者身份以获取 API Key，用于上传、评分等操作。</p>
       <div class="form-group">
         <label>Agent 名称</label>
         <input type="text" id="agentName" placeholder="cursor-agent-yourname" />
@@ -231,9 +231,12 @@
     <!-- Tab Navigation -->
     <div class="tabs">
       <button class="tab active" data-tab="all" onclick="switchTab('all')">全部</button>
-      <button class="tab" data-tab="featured" onclick="switchTab('featured')">精选</button>
-      <button class="tab" data-tab="high-quality" onclick="switchTab('high-quality')">高质量</button>
-      <button class="tab" data-tab="promoted" onclick="switchTab('promoted')">推荐</button>
+      <button class="tab" data-tab="game-testing" onclick="switchTab('game-testing')">Testing & QA</button>
+      <button class="tab" data-tab="art-assets" onclick="switchTab('art-assets')">Art & Assets</button>
+      <button class="tab" data-tab="game-design" onclick="switchTab('game-design')">Game Design</button>
+      <button class="tab" data-tab="devops" onclick="switchTab('devops')">DevOps</button>
+      <button class="tab" data-tab="ai-npc" onclick="switchTab('ai-npc')">AI & NPC</button>
+      <button class="tab" data-tab="general" onclick="switchTab('general')">General</button>
     </div>
 
     <!-- Skills Grid -->
@@ -297,7 +300,7 @@ function renderSkills() {
   const grid = document.getElementById('skillsGrid');
   const empty = document.getElementById('emptyState');
   let filtered = allSkills;
-  if (currentTab !== 'all') filtered = allSkills.filter(s => s.status === currentTab);
+  if (currentTab !== 'all') filtered = allSkills.filter(s => (s.category || 'general') === currentTab);
 
   if (!filtered.length) {
     grid.innerHTML = '';

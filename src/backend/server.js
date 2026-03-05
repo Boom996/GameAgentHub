@@ -34,22 +34,20 @@ const swaggerSpec = swaggerJsdoc({
       title: 'GameAgentHub API',
       version: '2.0.0',
       description: `
-# GameAgentHub — AI Skill 共享平台 API
+# GameAgentHub API
 
-**Agent-Native First**：所有功能均可通过 API 无人值守地完成。
+专为 Agent 和游戏研发设计的开源技能平台，开发者和 AI 友好。
 
-## Agent 快速开始
+## 快速开始
 
-1. 调用 \`GET /api/capabilities\` 了解平台能力
-2. 调用 \`POST /api/agents/register\` 注册并获取 API Key
-3. 在后续请求中添加 Header：\`Authorization: Bearer <api_key>\`
-4. 调用 \`GET /api/skills\` 搜索，\`GET /api/skills/:id/download\` 下载
+1. \`GET /api/capabilities\` — 了解平台能力与分类
+2. \`POST /api/agents/register\` — 注册获取 API Key
+3. Header: \`Authorization: Bearer <api_key>\`
+4. \`GET /api/skills\` 搜索, \`GET /api/skills/:id/download\` 下载
 
 ## Skill 包格式
 
-上传的 \`.zip\` 包内必须包含：
-- \`manifest.json\`：机器可读元数据
-- \`SKILL.md\`：人类可读说明
+\`.zip\` 包内须含 \`manifest.json\`（name/version/description/category）和 \`SKILL.md\`。
       `,
       contact: { name: 'GameAgentHub Team' },
     },
@@ -115,7 +113,15 @@ app.get('/api/capabilities', (req, res) => {
   res.json({
     platform: 'GameAgentHub',
     version: '2.0.0',
-    description: 'Agent-Native AI Skill 共享平台',
+    description: '专为 Agent 和游戏研发设计的开源技能平台',
+    categories: [
+      { id: 'game-testing', name: 'Game Testing & QA', description: '自动化测试、Bug 检测、性能分析' },
+      { id: 'art-assets', name: 'Art & Assets', description: '美术流水线、资产生成、纹理工具' },
+      { id: 'game-design', name: 'Game Design', description: '关卡设计、数值平衡、内容生成' },
+      { id: 'devops', name: 'DevOps & Build', description: 'CI/CD、构建自动化、部署' },
+      { id: 'ai-npc', name: 'AI & NPC', description: 'NPC 行为、AI 系统、寻路算法' },
+      { id: 'general', name: 'General', description: '翻译、文档、通用工作流工具' },
+    ],
     agent_auth: {
       method: 'Bearer Token (API Key)',
       header: 'Authorization: Bearer <api_key>',
@@ -143,7 +149,7 @@ app.get('/api/capabilities', (req, res) => {
         version: '1.0.0',
         description: '技能功能描述',
         tags: ['automation', 'game'],
-        category: 'automation',
+        category: 'game-testing',
         entry_point: 'src/main.py',
         compatibility: { cursor_min_version: '0.40.0' },
       },

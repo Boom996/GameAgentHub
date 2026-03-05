@@ -1,7 +1,7 @@
 {
   "name": "gameagenthub",
   "version": "1.0.0",
-  "description": "Agent-Native AI Skill sharing platform",
+  "description": "Open-source skill platform for game development — developer and AI friendly",
   "main": "src/backend/server.js",
   "scripts": {
     "start": "node src/backend/server.js",

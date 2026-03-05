@@ -1,6 +1,6 @@
 ---
 name: gameagenthub
-description: "Use GameAgentHub API to search, download, upload, and rate AI skills. Use when you need to discover game-related AI skills, upload new skill packages, or rate existing ones."
+description: "Use GameAgentHub API to search, download, upload, and rate game development skills. Use when you need to discover game dev skills (testing, art, design, devops, AI/NPC), upload new skill packages, or rate existing ones."
 metadata:
   {
     "openclaw":

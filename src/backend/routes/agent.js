@@ -58,6 +58,7 @@ router.get('/discover', authenticate(false), (req, res) => {
 
   res.json({
     platform: 'GameAgentHub',
+    description: 'Open-source skill platform for game development',
     api_version: '2.0',
     total: agentSkills.length,
     skills: agentSkills,

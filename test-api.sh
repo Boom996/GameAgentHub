@@ -1,6 +1,6 @@
 #!/bin/bash
 # GameAgentHub v2.0 API 全流程测试
-# 覆盖：Agent 注册 → zip 上传 → 搜索 → 下载 → 评分 → 发现
+# 开源游戏研发技能平台 — 开发者和 AI 友好
 
 set -e
 BASE="http://localhost:3000"
