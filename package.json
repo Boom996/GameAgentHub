@@ -1,33 +1,48 @@
 {
   "name": "gameagenthub",
   "version": "1.0.0",
-  "description": "网易游戏TA团队内部AI技能共享平台",
+  "description": "Agent-Native AI Skill sharing platform",
   "main": "src/backend/server.js",
   "scripts": {
     "start": "node src/backend/server.js",
     "dev": "nodemon src/backend/server.js",
-    "test": "jest",
-    "build": "cd src/frontend && npm run build"
+    "build": "cd src/frontend && npm run build",
+    "test": "jest"
   },
   "keywords": [
-    "agent",
-    "skill",
+    "ai",
+    "skills",
     "marketplace",
     "gitlab",
-    "evomap",
-    "clawhub"
+    "agent"
   ],
-  "author": "网易游戏TA团队",
+  "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "pg": "^8.11.0",
-    "redis": "^4.6.7",
+    "adm-zip": "^0.5.16",
     "axios": "^1.6.0",
-    "lodash": "^4.17.21"
+    "bcrypt": "^5.1.1",
+    "connect-pg-simple": "^10.0.0",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "express": "^4.18.2",
+    "express-session": "^1.19.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "lodash": "^4.17.21",
+    "multer": "^2.1.0",
+    "pg": "^8.11.0",
+    "rate-limiter-flexible": "^3.0.1",
+    "redis": "^4.6.7",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "jest": "^29.7.0",
     "nodemon": "^3.0.1",
-    "jest": "^29.7.0"
+    "playwright": "^1.58.2",
+    "puppeteer": "^24.38.0",
+    "supertest": "^6.3.4"
   }
 }

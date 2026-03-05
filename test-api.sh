@@ -1,96 +1,133 @@
 #!/bin/bash
-# GameAgentHub API Test Script
+# GameAgentHub v2.0 API 全流程测试
+# 覆盖：Agent 注册 → zip 上传 → 搜索 → 下载 → 评分 → 发现
 
-API_BASE="http://localhost:3000/api"
+set -e
+BASE="http://localhost:3000"
+GREEN='\033[0;32m'; RED='\033[0;31m'; NC='\033[0m'
+pass=0; fail=0
 
-echo "======================================"
-echo "GameAgentHub API 测试"
-echo "======================================"
+check() {
+  local name="$1" expected="$2" actual="$3"
+  if [ "$actual" = "$expected" ]; then
+    echo -e "  ${GREEN}PASS${NC} $name (HTTP $actual)"
+    pass=$((pass+1))
+  else
+    echo -e "  ${RED}FAIL${NC} $name (expected $expected, got $actual)"
+    fail=$((fail+1))
+  fi
+}
+
+echo "=== GameAgentHub v2.0 API Test ==="
 echo ""
 
-# Test 1: Health check
-echo "1. 测试健康检查..."
-curl -s "$API_BASE/../health" | python3 -m json.tool 2>/dev/null || curl -s "$API_BASE/../health"
-echo ""
+# 1. Health check
+echo "[1] Health & System"
+code=$(curl -s -o /dev/null -w "%{http_code}" $BASE/health)
+check "GET /health" "200" "$code"
 
-# Test 2: Upload skill 1
-echo "2. 上传示例技能 1..."
-curl -s -X POST "$API_BASE/skills" \
+code=$(curl -s -o /dev/null -w "%{http_code}" $BASE/api/capabilities)
+check "GET /api/capabilities" "200" "$code"
+
+code=$(curl -s -o /dev/null -w "%{http_code}" $BASE/api/openapi.json)
+check "GET /api/openapi.json" "200" "$code"
+
+# 2. Agent registration
+echo ""
+echo "[2] Agent Register"
+REG=$(curl -s -X POST $BASE/api/agents/register \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "FBX 批量导出工具",
-    "description": "Maya 中一键批量导出 FBX，支持自定义命名规则和贴图检测",
-    "authorId": "ta_user_001",
-    "version": "2.3.1",
-    "tags": ["3d", "export", "maya", "fbx"],
-    "category": "3d-modeling"
-  }' | python3 -m json.tool 2>/dev/null
-echo ""
+  -d '{"agent_name":"test-bot","scopes":["read","write"],"expires_in_days":30}')
+API_KEY=$(echo "$REG" | grep -o '"api_key":"[^"]*"' | cut -d'"' -f4)
+AGENT_ID=$(echo "$REG" | grep -o '"agent_id":"[^"]*"' | cut -d'"' -f4)
 
-# Test 3: Upload skill 2
-echo "3. 上传示例技能 2..."
-curl -s -X POST "$API_BASE/skills" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "PBR 材质生成器",
-    "description": "基于 AI 的 PBR 材质自动生成工具，支持多种风格",
-    "authorId": "ta_user_002",
-    "version": "1.5.0",
-    "tags": ["ai", "pbr", "material", "texture"],
-    "category": "material-system"
-  }' | python3 -m json.tool 2>/dev/null
-echo ""
-
-# Test 4: Upload skill 3
-echo "4. 上传示例技能 3..."
-curl -s -X POST "$API_BASE/skills" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "动画重定向工具",
-    "description": "自动在不同角色之间重定向动画，保持运动学完整性",
-    "authorId": "ta_user_003",
-    "version": "3.0.2",
-    "tags": ["animation", "retargeting", "maya"],
-    "category": "animation"
-  }' | python3 -m json.tool 2>/dev/null
-echo ""
-
-# Test 5: List all skills
-echo "5. 获取所有技能列表..."
-curl -s "$API_BASE/skills" | python3 -m json.tool 2>/dev/null
-echo ""
-
-# Test 6: Install a skill
-echo "6. 测试安装技能..."
-SKILL_ID=$(curl -s "$API_BASE/skills" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-if [ -n "$SKILL_ID" ]; then
-  curl -s -X POST "$API_BASE/skills/$SKILL_ID/install" | python3 -m json.tool 2>/dev/null
+if [ -n "$API_KEY" ]; then
+  echo -e "  ${GREEN}PASS${NC} POST /api/agents/register (got key: ${API_KEY:0:12}...)"
+  pass=$((pass+1))
+else
+  echo -e "  ${RED}FAIL${NC} POST /api/agents/register (no api_key)"
+  fail=$((fail+1))
 fi
-echo ""
 
-# Test 7: Rate a skill
-echo "7. 测试评分技能..."
-if [ -n "$SKILL_ID" ]; then
-  curl -s -X POST "$API_BASE/skills/$SKILL_ID/rate" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "userId": "ta_user_004",
-      "overallScore": 4,
-      "dimensions": {
-        "intrinsicQuality": 0.85,
-        "usageMetrics": 0.7,
-        "socialSignals": 0.9,
-        "freshness": 0.8
-      }
-    }' | python3 -m json.tool 2>/dev/null
-fi
-echo ""
+code=$(curl -s -o /dev/null -w "%{http_code}" $BASE/api/agents/me \
+  -H "Authorization: Bearer $API_KEY")
+check "GET /api/agents/me" "200" "$code"
 
-# Test 8: Agent discovery
-echo "8. 测试 Agent 技能发现..."
-curl -s "$API_BASE/agent/discover?capabilities=ai,automation" | python3 -m json.tool 2>/dev/null
+# 3. Create test skill zip
 echo ""
+echo "[3] Skill Upload"
+TMP=$(mktemp -d)
+mkdir -p "$TMP/src"
+cat > "$TMP/manifest.json" << 'EOF'
+{"name":"test-automation","version":"1.0.0","description":"Test automation skill for CI","tags":["test","automation"],"category":"testing","entry_point":"src/main.py"}
+EOF
+echo "# Test Automation Skill" > "$TMP/SKILL.md"
+echo "print('hello')" > "$TMP/src/main.py"
+(cd "$TMP" && zip -r skill.zip manifest.json SKILL.md src/ > /dev/null 2>&1)
 
-echo "======================================"
-echo "测试完成！"
-echo "======================================"
+code=$(curl -s -o /tmp/upload_resp.json -w "%{http_code}" \
+  -X POST $BASE/api/skills \
+  -H "Authorization: Bearer $API_KEY" \
+  -F "file=@$TMP/skill.zip")
+check "POST /api/skills (upload)" "201" "$code"
+SKILL_ID=$(cat /tmp/upload_resp.json | grep -o '"skill_id":"[^"]*"' | cut -d'"' -f4)
+echo "  skill_id=$SKILL_ID"
+rm -rf "$TMP"
+
+# 4. List & Search
+echo ""
+echo "[4] Skill List & Search"
+code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/skills")
+check "GET /api/skills" "200" "$code"
+
+code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/skills?q=automation")
+check "GET /api/skills?q=automation" "200" "$code"
+
+code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/skills/$SKILL_ID")
+check "GET /api/skills/:id" "200" "$code"
+
+code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/skills/$SKILL_ID/manifest")
+check "GET /api/skills/:id/manifest" "200" "$code"
+
+# 5. Download
+echo ""
+echo "[5] Skill Download"
+code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/skills/$SKILL_ID/download")
+check "GET /api/skills/:id/download" "200" "$code"
+
+# 6. Rating
+echo ""
+echo "[6] Skill Rating"
+code=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X POST "$BASE/api/skills/$SKILL_ID/rate" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"intrinsic_quality":0.8,"usage_metrics":0.7,"social_signals":0.9,"freshness":0.8}')
+check "POST /api/skills/:id/rate" "200" "$code"
+
+# 7. Agent API
+echo ""
+echo "[7] Agent API"
+code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/agent/discover")
+check "GET /api/agent/discover" "200" "$code"
+
+code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/api/agent/search?q=test")
+check "GET /api/agent/search?q=test" "200" "$code"
+
+# 8. Auth guard
+echo ""
+echo "[8] Auth Guards"
+code=$(curl -s -o /dev/null -w "%{http_code}" $BASE/api/agents/me)
+check "GET /api/agents/me (no auth → 401)" "401" "$code"
+
+code=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X POST $BASE/api/skills \
+  -H "Content-Type: application/json" \
+  -d '{}')
+check "POST /api/skills (no auth → 401)" "401" "$code"
+
+# Summary
+echo ""
+echo "================================"
+echo -e "Passed: ${GREEN}${pass}${NC}  Failed: ${RED}${fail}${NC}  Total: $((pass+fail))"
+if [ $fail -eq 0 ]; then echo -e "${GREEN}All tests passed!${NC}"; else echo -e "${RED}Some tests failed.${NC}"; exit 1; fi

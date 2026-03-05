@@ -1,102 +1,118 @@
-// GitLab OAuth Authentication Routes
+/**
+ * GitLab OAuth 认证路由（面向人类用户）
+ *
+ * GET  /api/auth/gitlab          - 发起 OAuth 流程（跳转浏览器）
+ * GET  /api/auth/gitlab/callback - OAuth 回调，签发 JWT
+ * GET  /api/auth/me              - 获取当前用户信息
+ * POST /api/auth/logout          - 登出
+ */
+
 const express = require('express');
 const router = express.Router();
-const gitlabConfig = require('../config/gitlab');
+const axios = require('axios');
+const { authenticate, signJwt } = require('../middleware/auth');
 
-// In-memory user storage
-let users = [];
+const GITLAB_CLIENT_ID = process.env.GITLAB_CLIENT_ID || 'your-client-id';
+const GITLAB_CLIENT_SECRET = process.env.GITLAB_CLIENT_SECRET || 'your-client-secret';
+const GITLAB_REDIRECT_URI = process.env.GITLAB_REDIRECT_URI || 'http://localhost:3000/api/auth/gitlab/callback';
+const GITLAB_BASE_URL = process.env.GITLAB_BASE_URL || 'https://gitlab.com';
+const GITLAB_API_URL = `${GITLAB_BASE_URL}/api/v4`;
 
-// GET /auth/gitlab - Initiate GitLab OAuth flow
+/**
+ * @openapi
+ * /api/auth/gitlab:
+ *   get:
+ *     summary: 发起 GitLab OAuth 登录（仅浏览器）
+ *     description: 重定向到 GitLab OAuth 授权页面。AI Agent 请使用 API Key，不要调用此接口。
+ *     tags: [Auth]
+ *     responses:
+ *       302:
+ *         description: 重定向到 GitLab
+ */
 router.get('/gitlab', (req, res) => {
-  const oauthUrl = `${gitlabConfig.oauth.baseUrl}/oauth/authorize?` +
-    `client_id=${gitlabConfig.oauth.clientId}&` +
-    `redirect_uri=${gitlabConfig.oauth.redirectUri}&` +
-    `response_type=code&` +
-    `scope=${encodeURIComponent(gitlabConfig.oauth.scope)}`;
-  
-  res.json({
-    success: true,
-    oauthUrl: oauthUrl,
-    message: 'Redirect to this URL to authenticate with GitLab'
-  });
+  const authUrl = `${GITLAB_BASE_URL}/oauth/authorize?` +
+    `client_id=${GITLAB_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(GITLAB_REDIRECT_URI)}` +
+    `&response_type=code` +
+    `&scope=read_user`;
+  res.redirect(authUrl);
 });
 
-// GET /auth/gitlab/callback - OAuth callback
+/**
+ * @openapi
+ * /api/auth/gitlab/callback:
+ *   get:
+ *     summary: GitLab OAuth 回调
+ *     description: 交换授权码，签发 JWT，重定向回前端。
+ *     tags: [Auth]
+ */
 router.get('/gitlab/callback', async (req, res) => {
-  const { code } = req.query;
-  
-  if (!code) {
-    return res.status(400).json({
-      success: false,
-      error: 'Authorization code required'
-    });
+  const { code, error } = req.query;
+
+  if (error) {
+    return res.redirect(`/?auth_error=${encodeURIComponent(error)}`);
   }
-  
+
   try {
-    // Exchange code for token (simulated)
-    const tokenResponse = await exchangeCodeForToken(code);
-    
-    // Get user info from GitLab
-    const userInfo = await getUserInfo(tokenResponse.access_token);
-    
-    // Create or update user
-    let user = users.find(u => u.gitlabId === userInfo.id);
-    
-    if (!user) {
-      user = {
-        id: `user_${Date.now()}`,
-        gitlabId: userInfo.id,
-        username: userInfo.username,
-        email: userInfo.email,
-        avatarUrl: userInfo.avatar_url,
-        role: 'user',
-        createdAt: new Date(),
-        lastLoginAt: new Date()
-      };
-      users.push(user);
-    } else {
-      user.lastLoginAt = new Date();
-    }
-    
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role
-      },
-      token: tokenResponse.access_token,
-      message: 'Authentication successful'
+    const tokenResponse = await axios.post(`${GITLAB_BASE_URL}/oauth/token`, {
+      client_id: GITLAB_CLIENT_ID,
+      client_secret: GITLAB_CLIENT_SECRET,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: GITLAB_REDIRECT_URI,
     });
-    
-  } catch (error) {
-    console.error('OAuth error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Authentication failed'
+
+    const { access_token } = tokenResponse.data;
+
+    const userResponse = await axios.get(`${GITLAB_API_URL}/user`, {
+      headers: { Authorization: `Bearer ${access_token}` },
     });
+
+    const gitlabUser = userResponse.data;
+
+    // 构造平台用户对象（MVP 使用内存，生产替换为 DB upsert）
+    const user = {
+      id: `gitlab_${gitlabUser.id}`,
+      username: gitlabUser.username,
+      email: gitlabUser.email,
+      avatarUrl: gitlabUser.avatar_url,
+      role: 'user',
+    };
+
+    const jwt = signJwt(user);
+
+    // 将 JWT 传给前端（实际生产建议用 HttpOnly Cookie）
+    res.redirect(`/?token=${jwt}&username=${encodeURIComponent(user.username)}`);
+  } catch (err) {
+    console.error('[Auth] GitLab OAuth error:', err.message);
+    res.status(500).json({ error: 'authentication_failed', message: 'GitLab 认证失败' });
   }
 });
 
-// Helper functions (simulated)
-async function exchangeCodeForToken(code) {
-  // In production, this would call GitLab's OAuth token endpoint
-  return {
-    access_token: 'simulated_access_token',
-    token_type: 'Bearer',
-    expires_in: 7200
-  };
-}
+/**
+ * @openapi
+ * /api/auth/me:
+ *   get:
+ *     summary: 获取当前用户/Agent 信息
+ *     tags: [Auth]
+ *     security:
+ *       - BearerAuth: []
+ *       - ApiKeyAuth: []
+ */
+router.get('/me', authenticate(), (req, res) => {
+  res.json({ identity: req.identity });
+});
 
-async function getUserInfo(accessToken) {
-  // In production, this would call GitLab's user API
-  return {
-    id: 'gitlab_user_123',
-    username: 'ta_developer',
-    email: 'developer@game.netease.com',
-    avatar_url: 'https://gitlab.example.com/avatar.png'
-  };
-}
+/**
+ * @openapi
+ * /api/auth/logout:
+ *   post:
+ *     summary: 登出（人类用户）
+ *     tags: [Auth]
+ */
+router.post('/logout', (req, res) => {
+  // JWT 无状态，前端直接清除 token 即可
+  res.json({ success: true, message: '请在客户端清除 token' });
+});
 
 module.exports = router;
